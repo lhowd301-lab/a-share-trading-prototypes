@@ -1,0 +1,52 @@
+# config.py — 全局配置
+import os
+from datetime import datetime, time
+
+TICKER = "300136"
+TICKER_NAME = "信维通信"
+INITIAL_SHARES = 1000  # public demo
+INITIAL_COST = 20.0  # public demo
+AVAILABLE_CASH = 100000
+MAX_POSITION_RATIO = 0.60
+MAX_DAILY_LOSS_RATIO = 0.03
+BAR_INTERVAL = 1
+MA_PERIODS = [5, 10, 20, 30, 60]
+BOLL_PERIOD = 20
+BOLL_STD = 2.0
+RSI_PERIOD = 14
+MACD_FAST = 12
+MACD_SLOW = 26
+MACD_SIGNAL = 9
+KDJ_K = 9
+KDJ_D = 3
+TREND_MA_PERIOD = 20
+TREND_RSI_LOW = 40
+TREND_RSI_HIGH = 55
+TREND_ORDER_SIZE = 10000     # 每单买入股数
+TRADING_QUOTA = 10000        # 做T最大可用股数（不超过总持仓）
+SELL_PER_SIGNAL = 5000       # 每单卖出股数
+TREND_PROXIMITY = 0.005
+GRID_VOLUME_LEVELS = [(0.35, 5000), (0.50, 10000), (0.70, 15000), (0.80, 20000)]
+GRID_EXIT_ATR = 1.0
+GRID_RSI_EXIT = 70
+REVERSION_RSI_OVERSOLD = 30
+REVERSION_POSITION_STOP = 0.015
+REFRESH_INTERVAL = 5
+MARKET_OPEN = time(9, 30)
+MARKET_CLOSE = time(15, 0)
+MARKET_END = time(15, 30)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DAILY_LOG_PATH = os.path.join(BASE_DIR, "data", "daily_records.csv")
+SIGNAL_LOG_PATH = os.path.join(BASE_DIR, "data", "signal_log.csv")
+MARKET_CACHE_DIR = os.path.join(BASE_DIR, "data", "market_cache")
+os.makedirs(MARKET_CACHE_DIR, exist_ok=True)
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+CLASSIFIER_WEIGHTS = {"sma20_slope": 0.25, "boll_pos": 0.25, "rsi_bias": 0.15, "macd_hist": 0.15}
+TREND_THRESHOLD = 3.0      # 上涨阈值（原20，修正为合理值）
+SIDEWAYS_UPPER = 3.0       # 横盘上限
+SIDEWAYS_LOWER = -4.0      # 横盘下限
+DECLINE_THRESHOLD = -4.0   # 下跌阈值
+TRADING_SESSION_MORNING_START = time(9, 30)
+TRADING_SESSION_MORNING_END = time(11, 30)
+TRADING_SESSION_AFTERNOON_START = time(13, 0)
+TRADING_SESSION_AFTERNOON_END = time(15, 0)

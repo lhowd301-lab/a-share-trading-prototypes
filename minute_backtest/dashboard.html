@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>信维通信 右侧交易监控</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#0d1117;color:#c9d1d9;padding:16px}
+h1{font-size:18px;color:#f0f6fc;margin-bottom:8px}
+.ticker{color:#8b949e;font-size:13px}
+.status-bar{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.price-box{text-align:right}
+.price{font-size:28px;font-weight:700}
+.chg{font-size:14px;margin-left:8px}
+.up{color:#3fb950}.down{color:#f85149}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge-open{background:#064e3b;color:#6ee7b7;border:1px solid #059669}
+.badge-close{background:#1f2937;color:#9ca3af;border:1px solid #374151}
+.badge-up{background:#064e3b;color:#6ee7b7;border:1px solid #059669}
+.badge-down{background:#7f1d1d;color:#fca5a5;border:1px solid #dc2626}
+.badge-side{background:#1e3a5f;color:#93c5fd;border:1px solid #2563eb}
+.signal{display:inline-block;padding:3px 10px;border-radius:10px;font-size:12px;font-weight:500}
+.signal-wait{background:#1f2937;color:#9ca3af;border:1px solid #374151}
+.signal-buy{background:#064e3b;color:#6ee7b7;border:1px solid #059669;animation:fade 2s infinite}
+.signal-sell{background:#7f1d1d;color:#fca5a5;border:1px solid #dc2626;animation:fade 2s infinite}
+.signal-hold{background:#1e3a5f;color:#93c5fd;border:1px solid #2563eb}
+@keyframes fade{0%,100%{opacity:1}50%{opacity:.5}}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px;margin-bottom:12px}
+.card h3{font-size:12px;color:#8b949e;margin-bottom:6px;letter-spacing:.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}}
+.row{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
+.lbl{color:#8b949e}.val{font-weight:500;color:#e6edf3}
+.green{color:#3fb950}.red{color:#f85149}
+#chartBox{height:400px;margin-bottom:12px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px;display:none}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:4px 6px;color:#8b949e;font-weight:500;border-bottom:1px solid #30363d}
+td{padding:4px 6px;border-bottom:1px solid #21262d;font-size:12px}
+.buy{color:#3fb950}.sell{color:#f85149}
+#logBox{max-height:150px;overflow-y:auto;font-size:12px}
+#logBox div{padding:3px 0;border-bottom:1px solid #21262d;font-size:12px}
+</style>
+</head>
+<body>
+
+<h1>信维通信 <span class="ticker">300136.SZ</span> <span id="marketBadge" class="badge badge-close">盘后</span> <span id="regimeBadge" class="badge badge-close">等待...</span></h1>
+
+<div class="status-bar">
+  <div>
+    <span id="signalTag" class="signal signal-wait">等待数据</span>
+    <span id="tradeStatus" style="margin-left:8px;font-size:13px;color:#8b949e"></span>
+  </div>
+  <div class="price-box">
+    <span class="price" id="price">--</span>
+    <span class="chg" id="change"></span>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3>持仓概况</h3>
+    <div class="row"><span class="lbl">持仓股数</span><span class="val" id="posShares">0</span></div>
+    <div class="row"><span class="lbl">持仓均价</span><span class="val" id="posCost">--</span></div>
+    <div class="row"><span class="lbl">持仓市值</span><span class="val" id="posValue">--</span></div>
+    <div class="row"><span class="lbl">可用资金</span><span class="val" id="posCash">--</span></div>
+    <div class="row"><span class="lbl">总资产</span><span class="val" id="posTotal">--</span></div>
+    <div class="row"><span class="lbl">持仓盈亏</span><span class="val" id="posPnl">--</span></div>
+  </div>
+  <div class="card">
+    <h3>技术指标</h3>
+    <div class="row"><span class="lbl">布林上轨</span><span class="val" id="iBu">--</span></div>
+    <div class="row"><span class="lbl">布林中轨</span><span class="val" id="iBm">--</span></div>
+    <div class="row"><span class="lbl">布林下轨</span><span class="val" id="iBl">--</span></div>
+    <div class="row"><span class="lbl">RSI(14)</span><span class="val" id="iRsi">--</span></div>
+    <div class="row"><span class="lbl">MACD</span><span class="val" id="iMacd">--</span></div>
+    <div class="row"><span class="lbl">ATR(14)</span><span class="val" id="iAtr">--</span></div>
+    <div class="row"><span class="lbl">量比</span><span class="val" id="iVr">--</span></div>
+  </div>
+</div>
+
+<div id="gridPanel" class="card" style="display:none">
+  <h3>网格加仓</h3>
+  <div class="row"><span class="lbl">加仓股数</span><span class="val" id="gShares">--</span></div>
+  <div class="row"><span class="lbl">加仓均价</span><span class="val" id="gCost">--</span></div>
+  <div class="row"><span class="lbl">止盈价</span><span class="val green" id="gTp">--</span></div>
+  <div class="row"><span class="lbl">持仓时间</span><span class="val" id="gTime">--</span></div>
+  <div class="row"><span class="lbl">期间最高</span><span class="val" id="gHigh">--</span></div>
+</div>
+
+<div id="chartBox"><div id="mainChart" style="height:100%"></div></div>
+
+<div class="card">
+  <h3>交易记录</h3>
+  <table><thead><tr><th>时间</th><th>方向</th><th>股数</th><th>价格</th><th>信号/原因</th><th>盈亏</th></tr></thead>
+  <tbody id="tradeLog"></tbody></table>
+</div>
+
+<div class="card">
+  <h3>信号日志</h3>
+  <div id="logBox"></div>
+</div>
+
+<script>
+var lastBuyT = null, lastSellT = null;
+
+// Try to load ECharts from CDN
+var echartsLoaded = false;
+var script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js';
+script.onload = function() {
+  echartsLoaded = true;
+  document.getElementById('chartBox').style.display = 'block';
+  initChart();
+};
+script.onerror = function() {
+  console.log('ECharts CDN not available, showing data only');
+};
+document.head.appendChild(script);
+
+var mainChart = null;
+function initChart() {
+  if (!echartsLoaded || !document.getElementById('mainChart')) return;
+  try {
+    mainChart = echarts.init(document.getElementById('mainChart'));
+    mainChart.setOption({
+      tooltip:{trigger:'axis',axisPointer:{type:'cross'}},
+      grid:{left:'5%',right:'5%',top:'8%',bottom:'15%'},
+      xAxis:{type:'category',data:[],axisLine:{lineStyle:{color:'#30363d'}},axisLabel:{color:'#8b949e',fontSize:10}},
+      yAxis:{type:'value',scale:true,splitLine:{lineStyle:{color:'#21262d'}},axisLabel:{color:'#8b949e',fontSize:10}},
+      dataZoom:[{type:'inside'}],
+      series:[
+        {type:'candlestick',data:[],itemStyle:{color:'#f85149',color0:'#3fb950',borderColor:'#f85149',borderColor0:'#3fb950'}},
+        {type:'line',symbol:'none',lineStyle:{color:'#d29922',width:1,type:'dashed'}},
+        {type:'line',symbol:'none',lineStyle:{color:'#58a6ff',width:1}},
+        {type:'line',symbol:'none',lineStyle:{color:'#d29922',width:1,type:'dashed'}},
+      ]
+    });
+  } catch(e) { console.log('Chart init failed',e); }
+}
+
+function updatePage() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/status', true);
+  xhr.onload = function() {
+    if (xhr.status != 200) return;
+    var s = JSON.parse(xhr.responseText);
+    renderStatus(s);
+  };
+  xhr.onerror = function() {
+    console.log('Polling failed, retrying...');
+  };
+  xhr.send();
+}
+
+function renderStatus(s) {
+  // Price
+  var px = document.getElementById('price');
+  if (s.p != null) {
+    px.textContent = s.p.toFixed(2);
+    var ch = document.getElementById('change');
+    if (s.ch != null) {
+      ch.textContent = (s.ch > 0 ? '+' : '') + (s.ch * 100).toFixed(2) + '%';
+      ch.className = 'chg ' + (s.ch >= 0 ? 'up' : 'down');
+    }
+  }
+  // Market
+  var mb = document.getElementById('marketBadge');
+  mb.textContent = s.mo ? '盘中' : '盘后';
+  mb.className = 'badge ' + (s.mo ? 'badge-open' : 'badge-close');
+  var rb = document.getElementById('regimeBadge');
+  if (s.rg === 'uptrend') { rb.textContent = '上涨趋势 +' + s.rs_; rb.className = 'badge badge-up'; }
+  else if (s.rg === 'downtrend') { rb.textContent = '下跌趋势 ' + s.rs_; rb.className = 'badge badge-down'; }
+  else { rb.textContent = '横盘振荡 ' + s.rs_; rb.className = 'badge badge-side'; }
+  
+  // Signal
+  var st = document.getElementById('signalTag');
+  var ts = document.getElementById('tradeStatus');
+  if (s.ct) {
+    st.textContent = '持仓中'; st.className = 'signal signal-hold';
+    ts.textContent = s.ct.s + '股 @ ' + s.ct.bp;
+  } else if (s.lbs) {
+    st.textContent = '买入信号 ' + s.lbs.sc; st.className = 'signal signal-buy';
+    ts.textContent = '上次: ' + s.lbs.s + '股 @ ' + s.lbs.p;
+  } else {
+    st.textContent = '观望'; st.className = 'signal signal-wait';
+    ts.textContent = '无持仓';
+  }
+  
+  // Position
+  document.getElementById('posShares').textContent = s.ts ? s.ts.toLocaleString() : '0';
+  document.getElementById('posCost').textContent = s.ac > 0 ? s.ac.toFixed(3) : '--';
+  document.getElementById('posValue').textContent = s.pv > 0 ? s.pv.toLocaleString('zh-CN',{minimumFractionDigits:2}) : '--';
+  document.getElementById('posCash').textContent = s.av != null ? s.av.toLocaleString('zh-CN',{minimumFractionDigits:2}) : '--';
+  document.getElementById('posTotal').textContent = s.ta != null ? s.ta.toLocaleString('zh-CN',{minimumFractionDigits:2}) : '--';
+  var pnlEl = document.getElementById('posPnl');
+  if (s.pp != null) {
+    var pp = s.pp * 100;
+    pnlEl.textContent = (pp >= 0 ? '+' : '') + pp.toFixed(2) + '%';
+    pnlEl.className = 'val ' + (pp >= 0 ? 'green' : 'red');
+  }
+  
+  // Indicators
+  var ind = s.ind || {};
+  if (ind.bu != null) {
+    document.getElementById('iBu').textContent = ind.bu.toFixed(2);
+    document.getElementById('iBm').textContent = ind.bm.toFixed(2);
+    document.getElementById('iBl').textContent = ind.bl.toFixed(2);
+    var rsiEl = document.getElementById('iRsi');
+    rsiEl.textContent = ind.rsi.toFixed(1);
+    rsiEl.className = 'val ' + (ind.rsi >= 70 ? 'red' : ind.rsi <= 30 ? 'green' : '');
+    document.getElementById('iMacd').textContent = ind.macd.toFixed(4);
+    document.getElementById('iAtr').textContent = ind.atr.toFixed(2);
+    document.getElementById('iVr').textContent = ind.vr.toFixed(2) + 'x';
+  }
+  
+  // Trade panel
+  var tp = document.getElementById('tradePanel');
+  if (s.ct) {
+    tp.style.display = 'block';
+    document.getElementById('tBuy').textContent = s.ct.bp.toFixed(2);
+    document.getElementById('tTp').textContent = s.ct.tp.toFixed(2);
+    document.getElementById('tSl').textContent = s.ct.sl.toFixed(2);
+    document.getElementById('tTime').textContent = s.ct.el + '分钟';
+    document.getElementById('tHigh').textContent = s.ct.rh.toFixed(2);
+  } else {
+    tp.style.display = 'none';
+  }
+  
+  // Trade log
+  var tb = document.getElementById('tradeLog');
+  if (s.tt && s.tt.length > 0) {
+    tb.innerHTML = s.tt.slice().reverse().map(function(t) {
+      var dir = t.d === 'B' ? '买入' : t.d === 'S' ? '卖出' : '策略切换';
+      var cls = t.d === 'B' ? 'buy' : t.d === 'S' ? 'sell' : '';
+      var pnl = (t.pnl != null && t.pnl != 0) ? t.pnl.toFixed(2) : '';
+      var reason = t.r || (t.sc > 0 ? '强度:' + t.sc : '');
+      return '<tr><td>' + (t.t ? t.t.slice(11,19) : '') + '</td><td class="' + cls + '">' + dir + '</td><td>' + (t.s || '') + '</td><td>' + (t.p || '') + '</td><td>' + reason + '</td><td class="' + (t.pnl > 0 ? 'green' : t.pnl < 0 ? 'red' : '') + '">' + pnl + '</td></tr>';
+    }).join('');
+  }
+  
+  // Signal log
+  if (s.lbs && s.lbs.t !== lastBuyT) {
+    addLog('\uD83D\uDFE2 买入信号 强度' + s.lbs.sc + ' @ ' + s.lbs.p);
+    lastBuyT = s.lbs.t;
+  }
+  if (s.lss && s.lss.t !== lastSellT) {
+    addLog('\uD83D\uDD34 卖出信号 ' + s.lss.r + ' @ ' + s.lss.p + ' PnL:' + s.lss.pnl);
+    lastSellT = s.lss.t;
+  }
+  
+  // Chart
+  if (mainChart && s.k && s.k.length > 0) {
+    try {
+      var times = s.k.map(function(d){return d.t;});
+      var ohlc = s.k.map(function(d){return [d.o, d.c, d.l, d.h];});
+      var bl = s.b || {u:[],m:[],l:[]};
+      mainChart.setOption({
+        xAxis:{data:times},
+        series:[{data:ohlc},{data:bl.u},{data:bl.m},{data:bl.l}]
+      });
+    } catch(e) { console.log('Chart update failed'); }
+  }
+}
+
+function addLog(msg) {
+  var box = document.getElementById('logBox');
+  var div = document.createElement('div');
+  div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  while (box.children.length > 50) box.removeChild(box.firstChild);
+}
+
+// Start polling
+updatePage();
+setInterval(updatePage, 3000);
+</script>
+</body>
+</html>

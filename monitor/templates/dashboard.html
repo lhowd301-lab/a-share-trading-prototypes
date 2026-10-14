@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>信维通信 · 右侧交易监控平台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #0d1117; color: #e6edf3; font-size: 13px; line-height: 1.5;
+  min-height: 100vh; overflow-x: hidden;
+}
+
+/* ===== 顶部状态栏 ===== */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 20px; background: #161b22; border-bottom: 1px solid #30363d;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-left h1 { font-size: 16px; font-weight: 600; }
+.header-left .ticker { color: #8b949e; font-size: 12px; }
+.price-display { font-size: 28px; font-weight: 700; }
+.price-change { font-size: 14px; margin-left: 8px; }
+.price-change.up { color: #26a69a; }
+.price-change.down { color: #ef5350; }
+.price-change.neutral { color: #8b949e; }
+.market-status { padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.market-status.open { background: #1a3a1a; color: #26a69a; }
+.market-status.closed { background: #3a1a1a; color: #ef5350; }
+
+.update-time { color: #8b949e; font-size: 11px; }
+
+/* ===== 主布局 ===== */
+.main-grid {
+  display: flex; flex-direction: column; gap: 12px; padding: 12px;
+  max-width: 1600px; margin: 0 auto;
+}
+
+.panel {
+  background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px;
+}
+.panel-title {
+  font-size: 11px; text-transform: uppercase; color: #8b949e; font-weight: 600;
+  letter-spacing: 0.5px; margin-bottom: 8px;
+}
+
+/* ===== 图表容器 ===== */
+
+
+
+/* ===== 技术指标面板 ===== */
+.indicator-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;
+}
+.indicator-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 8px; background: #0d1117; border-radius: 4px;
+  font-size: 12px;
+}
+.indicator-item .label { color: #8b949e; }
+.indicator-item .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.indicator-item .value.up { color: #26a69a; }
+.indicator-item .value.down { color: #ef5350; }
+.indicator-item .value.bullish { color: #26a69a; }
+.indicator-item .value.bearish { color: #ef5350; }
+
+/* ===== 行情分类 ===== */
+.classifier-large { text-align: center; padding: 24px; }
+.classifier-large .regime-icon { font-size: 40px; margin-bottom: 8px; }
+.classifier-large .regime { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.classifier-large .score { font-size: 32px; font-weight: 700; color: #e6edf3; margin-bottom: 8px; }
+.classifier-large .score-detail { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #8b949e; }
+.classifier-large .score-detail .val { font-weight: 600; }
+.mid-section { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 800px) { .mid-section { grid-template-columns: 1fr; } }
+.trade-log { max-height: 300px; overflow-y: auto; }
+.trade-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; margin-bottom: 4px; border-radius: 4px; font-size: 12px; }
+.trade-item.buy { background: rgba(38, 166, 154, 0.08); border-left: 3px solid #26a69a; }
+.trade-item.sell { background: rgba(239, 83, 80, 0.08); border-left: 3px solid #ef5350; }
+.trade-item .t-time { color: #484f58; font-size: 11px; width: 60px; }
+.trade-item .t-type { font-weight: 700; width: 36px; }
+.trade-item .t-strategy { color: #8b949e; width: 60px; }
+.trade-item .t-price { font-weight: 600; width: 70px; }
+.trade-item .t-shares { color: #8b949e; width: 60px; }
+.classifier-box {
+  text-align: center; padding: 12px; background: #0d1117; border-radius: 6px; margin-bottom: 12px;
+}
+.classifier-box .regime {
+  font-size: 15px; font-weight: 700; margin-bottom: 4px;
+}
+.classifier-box .regime.uptrend { color: #26a69a; }
+.classifier-box .regime.downtrend { color: #ef5350; }
+.classifier-box .regime.sidelines { color: #ffa726; }
+.classifier-box .score { font-size: 24px; font-weight: 700; color: #e6edf3; }
+.classifier-details { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.classifier-details .item {
+  flex: 1; min-width: 80px; padding: 4px; background: #161b22; border-radius: 4px; font-size: 11px;
+}
+.classifier-details .item .val { font-weight: 600; }
+
+/* ===== 信号流 ===== */
+.signal-feed { max-height: 220px; overflow-y: auto; }
+.signal-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 4px;
+  border-radius: 4px; font-size: 12px; animation: fadeIn 0.3s;
+}
+.signal-item.buy { background: rgba(38, 166, 154, 0.1); border-left: 3px solid #26a69a; }
+.signal-item.sell { background: rgba(239, 83, 80, 0.1); border-left: 3px solid #ef5350; }
+.signal-item .sig-type { font-weight: 700; width: 36px; }
+.signal-item .sig-price { font-variant-numeric: tabular-nums; font-weight: 600; }
+.signal-item .sig-strategy { color: #8b949e; }
+.signal-item .sig-reason { color: #8b949e; font-size: 11px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signal-item .sig-time { color: #484f58; font-size: 11px; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== 持仓面板 ===== */
+.portfolio-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;
+}
+.portfolio-item {
+  text-align: center; padding: 10px; background: #0d1117; border-radius: 6px;
+}
+.portfolio-item .p-label { font-size: 11px; color: #8b949e; margin-bottom: 2px; }
+.portfolio-item .p-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.portfolio-item .p-value.small { font-size: 14px; }
+
+/* ===== Tab 切换 ===== */
+.tab-bar { display: flex; gap: 2px; margin-bottom: 8px; }
+.tab-btn {
+  padding: 6px 16px; font-size: 12px; border: none; background: #0d1117; color: #8b949e;
+  border-radius: 4px 4px 0 0; cursor: pointer; transition: all 0.2s;
+}
+.tab-btn:hover { color: #e6edf3; }
+.tab-btn.active { background: #161b22; color: #e6edf3; border-bottom: 2px solid #58a6ff; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ===== 表格 ===== */
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th {
+  padding: 8px 10px; text-align: right; font-weight: 600; color: #8b949e;
+  border-bottom: 1px solid #30363d; font-size: 11px;
+}
+.data-table td { padding: 6px 10px; text-align: right; border-bottom: 1px solid #21262d; font-variant-numeric: tabular-nums; }
+.data-table th:first-child, .data-table td:first-child { text-align: left; }
+.data-table tr:hover td { background: rgba(88, 166, 255, 0.04); }
+
+/* ===== 信号日志表格 ===== */
+.signal-log-table td.type-buy { color: #26a69a; }
+.signal-log-table td.type-sell { color: #ef5350; }
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0d1117; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+/* ===== 响应式 ===== */
+@media (max-width: 900px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .header { flex-wrap: wrap; gap: 8px; }
+  .price-display { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== 顶部状态栏 ========== -->
+<div class="header">
+  <div class="header-left">
+    <h1>信维通信 <span class="ticker">300136.SZ</span></h1>
+    <div>
+      <span class="price-display" id="priceDisplay">--</span>
+      <span class="price-change" id="priceChange">--</span>
+    </div>
+    <span class="market-status" id="marketStatus">---</span>
+  </div>
+  <div>
+    <span class="update-time" id="updateTime">等待数据...</span>
+  </div>
+</div>
+
+<!-- ========== 主布局 ========== -->
+<div class="main-grid">
+
+  <!-- 左列：K线图 -->
+
+  <!-- 右列：指标 + 信号 -->
+  <div class="classifier-large">
+      <div class="regime-icon" id="regimeIcon">📊</div>
+      <div class="regime" id="classifierRegime">加载中...</div>
+      <div class="score" id="classifierScore">--</div>
+      <div class="score-detail" id="scoreDetail"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 技术指标 ========== -->
+<div class="main-grid">
+  <div class="panel">
+    <div class="panel-title">技术指标</div>
+    <div class="indicator-grid" id="indicatorGrid"></div>
+  </div>
+</div>
+
+<!-- ========== 信号 + 持仓 ========== -->
+<div class="main-grid mid-section">
+  <div class="panel">
+      <div class="panel-title">实时信号</div>
+      <div class="signal-feed" id="signalFeed">
+      <div style="color:#8b949e; text-align:center; padding:20px;">等待数据...</div>
+      </div>
+    </div>
+  <div class="panel">
+    <div class="panel-title">持仓概览</div>
+    <div class="portfolio-grid" id="portfolioGrid"></div>
+  </div>
+</div>
+
+<!-- ========== 交易日志 ========== -->
+<div style="max-width:1600px; margin:0 auto; padding:0 12px 12px;">
+  <div class="panel">
+    <div class="panel-title">交易日志</div>
+    <div class="trade-log" id="tradeLog">
+      <div style="color:#8b949e; text-align:center; padding:20px;">暂无交易记录</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- ========== 持仓面板 ========== -->
+<div style="max-width:1600px; margin:0 auto; padding:0 12px 12px;">
+  <div class="panel">
+    <div class="panel-title">持仓概览</div>
+    <div class="portfolio-grid" id="portfolioGrid"></div>
+  </div>
+</div>
+
+<!-- ========== 历史数据 ========== -->
+<div style="max-width:1600px; margin:0 auto; padding:0 12px 24px;">
+  <div class="panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('daily')">每日持仓记录</button>
+      <button class="tab-btn" onclick="switchTab('signals')">信号历史</button>
+    </div>
+    <div class="tab-content active" id="tabDaily">
+      <table class="data-table" id="dailyTable">
+        <thead><tr>
+          <th>日期</th><th>持仓股数</th><th>成本价</th><th>股价</th><th>股票价值</th>
+          <th>可用资金</th><th>总资产</th><th>交易次数</th>
+        </tr></thead>
+        <tbody id="dailyBody"><tr><td colspan="8" style="text-align:center;color:#8b949e;">暂无数据</td></tr></tbody>
+      </table>
+    </div>
+    <div class="tab-content" id="tabSignals">
+      <table class="data-table signal-log-table">
+        <thead><tr><th>时间</th><th>类型</th><th>策略</th><th>价格</th><th>股数</th><th>原因</th><th>强度</th></tr></thead>
+        <tbody id="signalLogBody"><tr><td colspan="7" style="text-align:center;color:#8b949e;">暂无数据</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+
+// ========== WebSocket ==========
+let ws = null;
+let reconnectTimer = null;
+
+function connectWS() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+  ws.onopen = () => {
+    console.log('WebSocket connected');
+    setStatus('connected');
+    ws.send(JSON.stringify({ action: 'refresh' }));
+    startAutoRefresh();
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'market_update') {
+      updateDashboard(msg.data);
+    }
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket disconnected');
+    setStatus('disconnected');
+    stopAutoRefresh();
+    reconnectTimer = setTimeout(connectWS, 3000);
+  };
+
+  ws.onerror = (err) => { console.error('WS error:', err); ws.close(); };
+}
+
+let refreshTimer = null;
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  refreshTimer = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: 'refresh' }));
+    }
+  }, 5000);
+}
+
+function stopAutoRefresh() {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+}
+
+function setStatus(status) {
+  const el = document.getElementById('marketStatus');
+  if (status === 'connected') {
+    el.textContent = '● 在线';
+    el.className = 'market-status open';
+  } else {
+    el.textContent = '○ 离线';
+    el.className = 'market-status closed';
+  }
+}
+
+// ========== 仪表盘更新 ==========
+function updateDashboard(data) {
+  if (!data) return;
+  const { latest_quote: quote, indicators, classifier, signals, portfolio, daily_records: dailyRecords,
+          signal_log: signalLog, market_open, last_update } = data;
+
+  // 更新时间
+  document.getElementById('updateTime').textContent = last_update ? `更新: ${last_update}` : '--';
+
+  // 市场状态
+  const statusEl = document.getElementById('marketStatus');
+  if (market_open) {
+    statusEl.textContent = '● 交易中';
+    statusEl.className = 'market-status open';
+  } else {
+    statusEl.textContent = '● 已收盘';
+    statusEl.className = 'market-status closed';
+  }
+
+  // 实时报价
+  if (quote && quote.price) {
+    document.getElementById('priceDisplay').textContent = `¥${quote.price.toFixed(2)}`;
+    const changeEl = document.getElementById('priceChange');
+    const change = quote.change || 0;
+    const pct = quote.change_pct || 0;
+    changeEl.textContent = `${change > 0 ? '+' : ''}${change.toFixed(2)} (${pct > 0 ? '+' : ''}${pct.toFixed(2)}%)`;
+    changeEl.className = `price-change ${change > 0 ? 'up' : change < 0 ? 'down' : 'neutral'}`;
+  }
+
+  // 行情分类
+  if (classifier) {
+    updateClassifier(classifier);
+  }
+
+  // 技术指标
+  if (indicators) {
+    updateIndicators(indicators);
+  }
+
+  // 信号流
+  if (signals && signals.length > 0) {
+    updateSignals(signals);
+  }
+
+  // 持仓
+  if (portfolio) {
+    updatePortfolio(portfolio);
+    if (portfolio.daily_trades && portfolio.daily_trades.length > 0) {
+      updateTradeLog(portfolio.daily_trades);
+    }
+  }
+
+  // 每日记录
+  if (dailyRecords && dailyRecords.length > 0) {
+    updateDailyTable(dailyRecords);
+  }
+
+  // 信号日志
+  if (signalLog && signalLog.length > 0) {
+    updateSignalLog(signalLog);
+  }
+}
+
+function updateIndicators(ind) {
+  const grid = document.getElementById('indicatorGrid');
+  const items = [
+    { label: 'MA5', key: 'MA5', fmt: v => v?.toFixed(2) || '--', dir: true },
+    { label: 'MA10', key: 'MA10', fmt: v => v?.toFixed(2) || '--', dir: true },
+    { label: 'MA20', key: 'MA20', fmt: v => v?.toFixed(2) || '--', dir: true },
+    { label: 'MA60', key: 'MA60', fmt: v => v?.toFixed(2) || '--', dir: true },
+    { label: 'RSI(14)', key: 'RSI', fmt: v => v?.toFixed(1) || '--' },
+    { label: 'MACD DIF', key: 'MACD_DIF', fmt: v => v != null ? v.toFixed(3) : '--', dir: true },
+    { label: 'MACD DEA', key: 'MACD_DEA', fmt: v => v != null ? v.toFixed(3) : '--', dir: true },
+    { label: 'MACD HIST', key: 'MACD_HIST', fmt: v => v != null ? v.toFixed(3) : '--', dir: true },
+    { label: 'K', key: 'K', fmt: v => v?.toFixed(1) || '--', dir: true },
+    { label: 'D', key: 'D', fmt: v => v?.toFixed(1) || '--', dir: true },
+    { label: 'J', key: 'J', fmt: v => v?.toFixed(1) || '--', dir: true },
+    { label: '布林上轨', key: 'BOLL_UPPER', fmt: v => v?.toFixed(2) || '--' },
+    { label: '布林中轨', key: 'BOLL_MID', fmt: v => v?.toFixed(2) || '--', dir: true },
+    { label: '布林下轨', key: 'BOLL_LOWER', fmt: v => v?.toFixed(2) || '--' },
+    { label: '布林宽度', key: 'BOLL_WIDTH', fmt: v => v?.toFixed(2) || '--' },
+    { label: '布林位置%', key: 'BOLL_POS', fmt: v => v != null ? `${v.toFixed(0)}%` : '--' },
+    { label: 'ATR', key: 'ATR', fmt: v => v?.toFixed(2) || '--' },
+    { label: '成交量比', key: 'VOL_RATIO', fmt: v => v?.toFixed(2) || '--' },
+  ];
+
+  grid.innerHTML = items.map(item => {
+    const val = ind[item.key];
+    let className = 'value';
+    let displayVal = item.fmt(val);
+    if (item.dir && val != null) {
+      if (ind[`${item.key}_DIRECTION`] === 'up' || (item.key.startsWith('MACD') && val > 0)) {
+        className += ' up';
+      } else if (ind[`${item.key}_DIRECTION`] === 'down' || (item.key.startsWith('MACD') && val < 0)) {
+        className += ' down';
+      }
+    }
+    // RSI特殊颜色
+    if (item.key === 'RSI' && val != null) {
+      className += val > 70 ? ' down' : val < 30 ? ' up' : '';
+    }
+    return `<div class="indicator-item"><span class="label">${item.label}</span><span class="${className}">${displayVal}</span></div>`;
+  }).join('');
+}
+
+function updateSignals(signals) {
+  const feed = document.getElementById('signalFeed');
+  feed.innerHTML = signals.map(s => `
+    <div class="signal-item ${s.type === 'BUY' ? 'buy' : 'sell'}">
+      <span class="sig-type" style="color:${s.type === 'BUY' ? '#26a69a' : '#ef5350'}">${s.type === 'BUY' ? '▲ 买入' : '▼ 卖出'}</span>
+      <span class="sig-price">¥${s.price?.toFixed(2)}</span>
+      <span class="sig-strategy">${s.strategy || ''}</span>
+      <span class="sig-reason" title="${s.reason || ''}">${s.reason || ''}</span>
+      <span class="sig-time">${s.time || ''}</span>
+    </div>
+  `).join('');
+}
+
+function updatePortfolio(p) {
+  const grid = document.getElementById('portfolioGrid');
+  const totalValue = (p.current_shares * p.last_price) + p.available_cash;
+  const pnl = p.last_price > 0 ? ((p.last_price - p.cost_basis) * p.current_shares) : 0;
+  
+  grid.innerHTML = `
+    <div class="portfolio-item">
+      <div class="p-label">持仓股数</div>
+      <div class="p-value">${(p.current_shares || 0).toLocaleString()}</div>
+    </div>
+    <div class="portfolio-item">
+      <div class="p-label">成本价</div>
+      <div class="p-value">¥${(p.cost_basis || 0).toFixed(3)}</div>
+    </div>
+    <div class="portfolio-item">
+      <div class="p-label">最新股价</div>
+      <div class="p-value" style="color:${p.last_price >= p.cost_basis ? '#26a69a' : '#ef5350'}">¥${(p.last_price || 0).toFixed(2)}</div>
+    </div>
+    <div class="portfolio-item">
+      <div class="p-label">股票价值</div>
+      <div class="p-value">¥${((p.current_shares * p.last_price) || 0).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</div>
+    </div>
+    <div class="portfolio-item">
+      <div class="p-label">可用资金</div>
+      <div class="p-value">¥${(p.available_cash || 0).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</div>
+    </div>
+    <div class="portfolio-item">
+      <div class="p-label">总资产</div>
+      <div class="p-value">¥${totalValue.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</div>
+    </div>
+    <div class="portfolio-item">
+      <div class="p-label">浮动盈亏</div>
+      <div class="p-value" style="color:${pnl >= 0 ? '#26a69a' : '#ef5350'}">${pnl >= 0 ? '+' : ''}¥${pnl.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</div>
+    </div>
+    <div class="portfolio-item">
+      <div class="p-label">盈亏比例</div>
+      <div class="p-value" style="font-size:14px;color:${pnl >= 0 ? '#26a69a' : '#ef5350'}">${p.cost_basis > 0 ? ((p.last_price - p.cost_basis) / p.cost_basis * 100).toFixed(2) : '0.00'}%</div>
+    </div>
+  `;
+}
+
+
+
+function updateDailyTable(records) {
+  const body = document.getElementById('dailyBody');
+  body.innerHTML = records.slice().reverse().map(r => `
+    <tr>
+      <td>${r.date || '--'}</td>
+      <td>${(r.shares || 0).toLocaleString()}</td>
+      <td>¥${(r.cost_basis || 0).toFixed(3)}</td>
+      <td style="color:${r.stock_price >= r.cost_basis ? '#26a69a' : '#ef5350'}">¥${(r.stock_price || 0).toFixed(2)}</td>
+      <td>¥${(r.stock_value || 0).toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+      <td>¥${(r.available_cash || 0).toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+      <td>¥${(r.total_value || 0).toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+      <td>${r.trades || 0}</td>
+    </tr>
+  `).join('');
+}
+
+function updateSignalLog(logs) {
+  const body = document.getElementById('signalLogBody');
+  body.innerHTML = logs.slice().reverse().map(l => `
+    <tr>
+      <td>${l.time || '--'}</td>
+      <td class="type-${(l.type||'').toLowerCase()}">${l.type || '--'}</td>
+      <td>${l.strategy || '--'}</td>
+      <td>¥${(l.price || 0).toFixed(2)}</td>
+      <td>${l.quantity || 0}</td>
+      <td style="font-size:11px;color:#8b949e;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${l.reason || ''}">${l.reason || ''}</td>
+      <td>${(l.strength || 0).toFixed(2)}</td>
+    </tr>
+  `).join('');
+}
+
+// ========== Tab 切换 ==========
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.tab-btn[onclick*="${tab}"]`).classList.add('active');
+  document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
+}
+
+function updateClassifier(cls) {
+  const icons = { uptrend: "📈", downtrend: "📉", sidelines: "📊" };
+  document.getElementById('regimeIcon').textContent = icons[cls.category] || "📊";
+  const regimeEl = document.getElementById('classifierRegime');
+  regimeEl.textContent = cls.label || '--';
+  regimeEl.className = 'regime ' + (cls.category || '');
+  document.getElementById('classifierScore').textContent = cls.total_score != null ? '总分 ' + cls.total_score.toFixed(1) : '--';
+  document.getElementById('scoreDetail').innerHTML =
+    '<span>SMA20斜率: <span class="val" style="color:' + ((cls.sma20_score||0) > 0 ? '#26a69a' : '#ef5350') + '">' + (cls.sma20_score||0).toFixed(1) + '</span></span>' +
+    '<span>布林位置: <span class="val" style="color:' + ((cls.boll_score||0) > 0 ? '#26a69a' : '#ef5350') + '">' + (cls.boll_score||0).toFixed(1) + '</span></span>' +
+    '<span>RSI偏向: <span class="val" style="color:' + ((cls.rsi_score||0) > 0 ? '#26a69a' : '#ef5350') + '">' + (cls.rsi_score||0).toFixed(1) + '</span></span>' +
+    '<span>MACD柱: <span class="val" style="color:' + ((cls.macd_score||0) > 0 ? '#26a69a' : '#ef5350') + '">' + (cls.macd_score||0).toFixed(1) + '</span></span>';
+}
+
+function updateTradeLog(trades) {
+  const log = document.getElementById('tradeLog');
+  if (!trades || trades.length === 0) {
+    log.innerHTML = '<div style="color:#8b949e; text-align:center; padding:20px;">暂无交易记录</div>';
+    return;
+  }
+  log.innerHTML = trades.slice().reverse().map(function(t) {
+    var type = t.type === 'BUY' ? '买入' : '卖出';
+    var color = t.type === 'BUY' ? '#26a69a' : '#ef5350';
+    var cls = t.type === 'BUY' ? 'buy' : 'sell';
+    return '<div class="trade-item ' + cls + '">' +
+      '<span class="t-time">' + (t.time || '') + '</span>' +
+      '<span class="t-type" style="color:' + color + '">' + type + '</span>' +
+      '<span class="t-strategy">' + (t.strategy || '') + '</span>' +
+      '<span class="t-price">¥' + (t.price || 0).toFixed(2) + '</span>' +
+      '<span class="t-shares">' + (t.shares || 0).toLocaleString() + '股</span>' +
+      '</div>';
+  }).join('');
+}
+
+// ========== 启动 ==========
+connectWS();
+</script>
+</body>
+</html>
